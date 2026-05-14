@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GED Aim Lab - Tracking Trainer</title>
+    <style>
+        :root {
+            --primary: #00ffcc;
+            --danger: #ff4444;
+            --bg: #0a0a0a;
+        }
+
+        body {
+            background: var(--bg);
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #game-canvas {
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            cursor: crosshair;
+            display: block;
+        }
+
+        .hud {
+            position: absolute;
+            top: 20px;
+            pointer-events: none;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-shadow: 0 0 10px rgba(0,255,204,0.5);
+        }
+
+        #progress-bar {
+            width: 400px;
+            height: 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--primary);
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        #progress-fill {
+            width: 0%;
+            height: 100%;
+            background: var(--primary);
+            box-shadow: 0 0 15px var(--primary);
+            transition: width 0.1s linear;
+        }
+
+        #quiz-overlay {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 15, 15, 0.98);
+            padding: 40px;
+            border-radius: 5px;
+            border: 2px solid var(--primary);
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 0 50px rgba(0, 255, 204, 0.2);
+            z-index: 100;
+        }
+
+        .subject-tag {
+            color: var(--primary);
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .option-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 12px 0;
+            background: transparent;
+            color: white;
+            border: 1px solid #444;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+
+        .option-btn:hover {
+            background: rgba(0, 255, 204, 0.1);
+            border-color: var(--primary);
+        }
+
+        .stats {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            text-align: left;
+            font-size: 14px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+<div class="hud">
+    <div id="status-text">LOCK ON TARGET TO SCAN DATA</div>
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+</div>
+
+<div class="stats" id="stats">
+    STREAK: 0 | LVL: 1.0 | RADIUS: 40
+</div>
+
+<canvas id="game-canvas"></canvas>
+
+<div id="quiz-overlay">
+    <div class="subject-tag" id="q-subject"></div>
+    <div id="q-text" style="font-size: 1.4em; margin-bottom: 20px;"></div>
+    <div id="q-options"></div>
+</div>
+
+<script>
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const progressFill = document.getElementById('progress-fill');
+    const quizOverlay = document.getElementById('quiz-overlay');
+    const statsDisplay = document.getElementById('stats');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let difficulty = 1.0;
+    let streak = 0;
+    let trackingScore = 0;
+    let isMouseOnTarget = false;
+    let gameActive = true;
+    let target = { x: 300, y: 300, r: 40, dx: 3, dy: 3 };
+
+    // --- EXPANDED GED QUESTION BANK ---
+    const gedQuestions = [
+        { subject: "MATH", q: "What is the square root of 81?", options: ["7", "8", "9", "10"], answer: "9" },
+        { subject: "SCIENCE", q: "Which planet is known as the Red Planet?", options: ["Venus", "Mars", "Jupiter", "Saturn"], answer: "Mars" },
+        { subject: "SOCIAL STUDIES", q: "The 19th Amendment granted what right?", options: ["Freedom of Speech", "Women's Suffrage", "Right to Bear Arms", "End of Slavery"], answer: "Women's Suffrage" },
+        { subject: "RLA", q: "Choose the correct spelling:", options: ["Accomodate", "Acomodate", "Accommodate", "Acommodate"], answer: "Accommodate" },
+        { subject: "MATH", q: "If 3x = 21, what is x?", options: ["6", "7", "8", "9"], answer: "7" },
+        { subject: "SCIENCE", q: "Water H2O is an example of a:", options: ["Element", "Mixture", "Compound", "Atom"], answer: "Compound" },
+        { subject: "SOCIAL STUDIES", q: "Who was the first U.S. President?", options: ["Thomas Jefferson", "Abraham Lincoln", "George Washington", "John Adams"], answer: "George Washington" },
+        { subject: "MATH", q: "What is the area of a circle with radius 1? (use π=3.14)", options: ["3.14", "6.28", "1.57", "9.42"], answer: "3.14" }
+    ];
+
+    canvas.addEventListener('mousemove', (e) => {
+        const dist = Math.hypot(e.clientX - target.x, e.clientY - target.y);
+        isMouseOnTarget = dist < target.r;
+    });
+
+    function update() {
+        if (!gameActive) return;
+
+        // Move target with difficulty scaling
+        target.x += target.dx * difficulty;
+        target.y += target.dy * difficulty;
+
+        // Bounce
+        if (target.x + target.r > canvas.width || target.x - target.r < 0) target.dx *= -1;
+        if (target.y + target.r > canvas.height || target.y - target.r < 0) target.dy *= -1;
+
+        // Progress Logic
+        if (isMouseOnTarget) {
+            trackingScore += 1.5;
+            progressFill.style.width = (trackingScore / 2) + "%";
+        } else {
+            if(trackingScore > 0) trackingScore -= 0.3; // Slight drain
+        }
+
+        if (trackingScore >= 200) triggerQuiz();
+
+        draw();
+        requestAnimationFrame(update);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Target
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = isMouseOnTarget ? "#00ffcc" : "#ff4444";
+        
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, target.r, 0, Math.PI * 2);
+        ctx.strokeStyle = isMouseOnTarget ? "#00ffcc" : "#ff4444";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Inner core
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, target.r * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = isMouseOnTarget ? "rgba(0, 255, 204, 0.5)" : "rgba(255, 68, 68, 0.5)";
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+
+    function triggerQuiz() {
+        gameActive = false;
+        quizOverlay.style.display = 'block';
+        const q = gedQuestions[Math.floor(Math.random() * gedQuestions.length)];
+        
+        document.getElementById('q-subject').innerText = `// SUBJECT: ${q.subject}`;
+        document.getElementById('q-text').innerText = q.q;
+        
+        const optContainer = document.getElementById('q-options');
+        optContainer.innerHTML = '';
+
+        q.options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(opt === q.answer);
+            optContainer.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(isCorrect) {
+        if (isCorrect) {
+            streak++;
+            difficulty += 0.15;
+            target.r = Math.max(12, target.r - 2);
+            document.getElementById('status-text').innerText = "DATA SYNCED. ACCELERATING...";
+        } else {
+            streak = 0;
+            difficulty = 1.0;
+            target.r = 40;
+            document.getElementById('status-text').innerText = "DATA CORRUPTED. REBOOTING...";
+        }
+        
+        statsDisplay.innerText = `STREAK: ${streak} | LVL: ${difficulty.toFixed(1)} | RADIUS: ${target.r}`;
+        quizOverlay.style.display = 'none';
+        trackingScore = 0;
+        progressFill.style.width = "0%";
+        gameActive = true;
+        update();
+    }
+
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+
+    update();
+</script>
+
+</body>
+</html>
