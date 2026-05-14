@@ -3,257 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GED Aim Lab - Tracking Trainer</title>
+    <title>GED Aim Trainer - Pro</title>
     <style>
-        :root {
-            --primary: #00ffcc;
-            --danger: #ff4444;
-            --bg: #0a0a0a;
+        :root { --primary: #ff4655; --bg: #0f1923; --accent: #00ff00; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; }
+        
+        /* Start Screen */
+        #start-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 25, 35, 0.98); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 500; text-align: center;
         }
 
-        body {
-            background: var(--bg);
-            color: white;
-            font-family: 'Courier New', Courier, monospace;
-            margin: 0;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        .input-box {
+            background: #1f2326; border: 1px solid #333; padding: 20px;
+            margin: 20px; border-radius: 4px; border-top: 3px solid var(--primary);
         }
 
-        #game-canvas {
-            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
-            cursor: crosshair;
-            display: block;
+        input[type="number"] {
+            background: #0f1923; border: 1px solid var(--primary); color: white;
+            padding: 10px; font-size: 18px; width: 100px; text-align: center; outline: none;
         }
+
+        .btn-main {
+            background: var(--primary); color: white; border: none; padding: 15px 40px;
+            font-weight: bold; cursor: pointer; letter-spacing: 2px; transition: 0.2s;
+        }
+        .btn-main:hover { background: #ff5e6a; transform: scale(1.05); }
+
+        /* Crosshair */
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 18px; height: 18px; pointer-events: none; z-index: 10; display: none;
+        }
+        .ch-line { position: absolute; background: var(--accent); }
+        .v { width: 2px; height: 6px; left: 8px; }
+        .h { width: 6px; height: 2px; top: 8px; }
+
+        /* Quiz */
+        #quiz-overlay {
+            display: none; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); background: #1f2326;
+            padding: 40px; border: 1px solid var(--primary); z-index: 100; width: 450px;
+        }
+        .option-btn {
+            display: block; width: 100%; padding: 15px; margin: 10px 0;
+            background: #2a2e33; color: white; border: 1px solid #3d434a; 
+            cursor: pointer; text-align: left; font-size: 14px;
+        }
+        .option-btn:hover { background: var(--primary); }
 
         .hud {
-            position: absolute;
-            top: 20px;
-            pointer-events: none;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-shadow: 0 0 10px rgba(0,255,204,0.5);
+            position: absolute; top: 30px; width: 100%;
+            display: flex; flex-direction: column; align-items: center; pointer-events: none;
         }
-
-        #progress-bar {
-            width: 400px;
-            height: 12px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid var(--primary);
-            border-radius: 6px;
-            margin-top: 10px;
-        }
-
-        #progress-fill {
-            width: 0%;
-            height: 100%;
-            background: var(--primary);
-            box-shadow: 0 0 15px var(--primary);
-            transition: width 0.1s linear;
-        }
-
-        #quiz-overlay {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(15, 15, 15, 0.98);
-            padding: 40px;
-            border-radius: 5px;
-            border: 2px solid var(--primary);
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 0 50px rgba(0, 255, 204, 0.2);
-            z-index: 100;
-        }
-
-        .subject-tag {
-            color: var(--primary);
-            font-weight: bold;
-            letter-spacing: 2px;
-            margin-bottom: 10px;
-        }
-
-        .option-btn {
-            display: block;
-            width: 100%;
-            padding: 15px;
-            margin: 12px 0;
-            background: transparent;
-            color: white;
-            border: 1px solid #444;
-            cursor: pointer;
-            font-size: 16px;
-            transition: 0.2s;
-        }
-
-        .option-btn:hover {
-            background: rgba(0, 255, 204, 0.1);
-            border-color: var(--primary);
-        }
-
-        .stats {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            text-align: left;
-            font-size: 14px;
-            color: #888;
-        }
+        #progress-bar { width: 300px; height: 5px; background: rgba(255,255,255,0.1); }
+        #progress-fill { width: 0%; height: 100%; background: var(--accent); }
     </style>
 </head>
 <body>
 
+<div id="start-screen">
+    <h1 style="color:var(--primary); letter-spacing: 8px; margin-bottom: 0;">PREPARATION PHASE</h1>
+    <div class="input-box">
+        <p style="margin-top: 0; font-size: 12px; color: #888;">SYNC YOUR VALORANT SENSITIVITY</p>
+        <input type="number" id="valSensInput" value="0.50" step="0.01">
+    </div>
+    <button class="btn-main" onclick="resumeGame()">CLICK TO BEGIN</button>
+    <p style="font-size: 11px; color: #444; margin-top: 20px;">PRESS ESC DURING PRACTICE TO RE-ADJUST</p>
+</div>
+
 <div class="hud">
-    <div id="status-text">LOCK ON TARGET TO SCAN DATA</div>
     <div id="progress-bar"><div id="progress-fill"></div></div>
 </div>
 
-<div class="stats" id="stats">
-    STREAK: 0 | LVL: 1.0 | RADIUS: 40
+<div id="crosshair">
+    <div class="ch-line v" style="top:0"></div><div class="ch-line v" style="bottom:0"></div>
+    <div class="ch-line h" style="left:0"></div><div class="ch-line h" style="right:0"></div>
+</div>
+
+<div id="quiz-overlay">
+    <h4 id="q-subject" style="color: var(--primary); margin: 0; letter-spacing: 2px;"></h4>
+    <h2 id="q-text" style="font-weight: normal; margin: 15px 0 25px 0; line-height: 1.4;"></h2>
+    <div id="q-options"></div>
 </div>
 
 <canvas id="game-canvas"></canvas>
-
-<div id="quiz-overlay">
-    <div class="subject-tag" id="q-subject"></div>
-    <div id="q-text" style="font-size: 1.4em; margin-bottom: 20px;"></div>
-    <div id="q-options"></div>
-</div>
 
 <script>
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
     const progressFill = document.getElementById('progress-fill');
     const quizOverlay = document.getElementById('quiz-overlay');
-    const statsDisplay = document.getElementById('stats');
+    const startScreen = document.getElementById('start-screen');
+    const crosshair = document.getElementById('crosshair');
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    let difficulty = 1.0;
-    let streak = 0;
+    let gameActive = false;
     let trackingScore = 0;
-    let isMouseOnTarget = false;
-    let gameActive = true;
-    let target = { x: 300, y: 300, r: 40, dx: 3, dy: 3 };
+    let viewX = 0, viewY = 0;
+    
+    // Slow, smooth target for tracking discipline
+    let target = { x: canvas.width/2, y: canvas.height/2, r: 35, dx: 1.2, dy: 0.9 };
 
-    // --- EXPANDED GED QUESTION BANK ---
-    const gedQuestions = [
-        { subject: "MATH", q: "What is the square root of 81?", options: ["7", "8", "9", "10"], answer: "9" },
-        { subject: "SCIENCE", q: "Which planet is known as the Red Planet?", options: ["Venus", "Mars", "Jupiter", "Saturn"], answer: "Mars" },
-        { subject: "SOCIAL STUDIES", q: "The 19th Amendment granted what right?", options: ["Freedom of Speech", "Women's Suffrage", "Right to Bear Arms", "End of Slavery"], answer: "Women's Suffrage" },
-        { subject: "RLA", q: "Choose the correct spelling:", options: ["Accomodate", "Acomodate", "Accommodate", "Acommodate"], answer: "Accommodate" },
-        { subject: "MATH", q: "If 3x = 21, what is x?", options: ["6", "7", "8", "9"], answer: "7" },
-        { subject: "SCIENCE", q: "Water H2O is an example of a:", options: ["Element", "Mixture", "Compound", "Atom"], answer: "Compound" },
-        { subject: "SOCIAL STUDIES", q: "Who was the first U.S. President?", options: ["Thomas Jefferson", "Abraham Lincoln", "George Washington", "John Adams"], answer: "George Washington" },
-        { subject: "MATH", q: "What is the area of a circle with radius 1? (use π=3.14)", options: ["3.14", "6.28", "1.57", "9.42"], answer: "3.14" }
+    const hardQuestions = [
+        { subject: "ALGEBRA", q: "Solve for x: 3(x - 4) = 2x + 5", options: ["x = 17", "x = 9", "x = 1", "x = 13"], answer: "x = 17" },
+        { subject: "SCIENCE", q: "Which law states that for every action, there is an equal and opposite reaction?", options: ["Newton's First Law", "Newton's Second Law", "Newton's Third Law", "Law of Conservation of Energy"], answer: "Newton's Third Law" },
+        { subject: "GOVERNMENT", q: "How many amendments does the US Constitution currently have?", options: ["10", "27", "33", "50"], answer: "27" },
+        { subject: "BIOLOGY", q: "What is the primary function of the mitochondria in a eukaryotic cell?", options: ["Protein synthesis", "Waste disposal", "ATP (energy) production", "DNA storage"], answer: "ATP (energy) production" },
+        { subject: "MATH", q: "What is the area of a circle with a radius of 5? (Use 3.14 for π)", options: ["15.7", "31.4", "78.5", "100"], answer: "78.5" }
     ];
 
-    canvas.addEventListener('mousemove', (e) => {
-        const dist = Math.hypot(e.clientX - target.x, e.clientY - target.y);
-        isMouseOnTarget = dist < target.r;
+    function resumeGame() {
+        startScreen.style.display = 'none';
+        quizOverlay.style.display = 'none';
+        canvas.requestPointerLock();
+    }
+
+    document.addEventListener('pointerlockchange', () => {
+        if (document.pointerLockElement === canvas) {
+            gameActive = true;
+            crosshair.style.display = 'block';
+        } else {
+            gameActive = false;
+            crosshair.style.display = 'none';
+            if (quizOverlay.style.display !== 'block') {
+                startScreen.style.display = 'flex';
+            }
+        }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!gameActive) return;
+        const inGameSens = parseFloat(document.getElementById('valSensInput').value) || 0.5;
+        const multiplier = inGameSens * 1.45; // Calibrated for 2D Translation
+        viewX -= e.movementX * multiplier;
+        viewY -= e.movementY * multiplier;
     });
 
     function update() {
-        if (!gameActive) return;
+        if (gameActive) {
+            target.x += target.dx;
+            target.y += target.dy;
 
-        // Move target with difficulty scaling
-        target.x += target.dx * difficulty;
-        target.y += target.dy * difficulty;
+            if (target.x + target.r > canvas.width || target.x - target.r < 0) target.dx *= -1;
+            if (target.y + target.r > canvas.height || target.y - target.r < 0) target.dy *= -1;
 
-        // Bounce
-        if (target.x + target.r > canvas.width || target.x - target.r < 0) target.dx *= -1;
-        if (target.y + target.r > canvas.height || target.y - target.r < 0) target.dy *= -1;
+            let vX = (( (target.x + viewX) % canvas.width) + canvas.width) % canvas.width;
+            let vY = (( (target.y + viewY) % canvas.height) + canvas.height) % canvas.height;
 
-        // Progress Logic
-        if (isMouseOnTarget) {
-            trackingScore += 1.5;
+            const dist = Math.hypot(vX - canvas.width/2, vY - canvas.height/2);
+            if (dist < target.r) trackingScore += 0.9;
+            else if (trackingScore > 0) trackingScore -= 0.4;
+
             progressFill.style.width = (trackingScore / 2) + "%";
-        } else {
-            if(trackingScore > 0) trackingScore -= 0.3; // Slight drain
+
+            if (trackingScore >= 200) {
+                document.exitPointerLock();
+                showQuiz();
+            }
+            draw(vX, vY);
         }
-
-        if (trackingScore >= 200) triggerQuiz();
-
-        draw();
         requestAnimationFrame(update);
     }
 
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Draw Target
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = isMouseOnTarget ? "#00ffcc" : "#ff4444";
+    function draw(vX, vY) {
+        ctx.fillStyle = '#0f1923';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
+        ctx.strokeStyle = '#1a252e';
+        for(let i=0; i<canvas.width; i+=200) {
+            ctx.beginPath();
+            ctx.moveTo((i + viewX) % canvas.width, 0);
+            ctx.lineTo((i + viewX) % canvas.width, canvas.height);
+            ctx.stroke();
+        }
+
         ctx.beginPath();
-        ctx.arc(target.x, target.y, target.r, 0, Math.PI * 2);
-        ctx.strokeStyle = isMouseOnTarget ? "#00ffcc" : "#ff4444";
+        ctx.arc(vX, vY, target.r, 0, Math.PI * 2);
+        const onTarget = Math.hypot(vX - canvas.width/2, vY - canvas.height/2) < target.r;
+        ctx.strokeStyle = onTarget ? '#00ff00' : '#ff4655';
         ctx.lineWidth = 3;
         ctx.stroke();
         
-        // Inner core
-        ctx.beginPath();
-        ctx.arc(target.x, target.y, target.r * 0.4, 0, Math.PI * 2);
-        ctx.fillStyle = isMouseOnTarget ? "rgba(0, 255, 204, 0.5)" : "rgba(255, 68, 68, 0.5)";
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        if(onTarget) {
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+            ctx.fill();
+        }
     }
 
-    function triggerQuiz() {
+    function showQuiz() {
         gameActive = false;
         quizOverlay.style.display = 'block';
-        const q = gedQuestions[Math.floor(Math.random() * gedQuestions.length)];
-        
-        document.getElementById('q-subject').innerText = `// SUBJECT: ${q.subject}`;
+        const q = hardQuestions[Math.floor(Math.random() * hardQuestions.length)];
+        document.getElementById('q-subject').innerText = q.subject;
         document.getElementById('q-text').innerText = q.q;
-        
-        const optContainer = document.getElementById('q-options');
-        optContainer.innerHTML = '';
-
+        const container = document.getElementById('q-options');
+        container.innerHTML = '';
         q.options.forEach(opt => {
-            const btn = document.createElement('button');
-            btn.className = 'option-btn';
-            btn.innerText = opt;
-            btn.onclick = () => checkAnswer(opt === q.answer);
-            optContainer.appendChild(btn);
+            const b = document.createElement('button');
+            b.className = 'option-btn';
+            b.innerText = opt;
+            b.onclick = () => {
+                if(opt === q.answer) {
+                    trackingScore = 0;
+                    resumeGame();
+                } else {
+                    alert("Incorrect. Target score reset, try again!");
+                    trackingScore = 0;
+                    resumeGame();
+                }
+            };
+            container.appendChild(b);
         });
     }
 
-    function checkAnswer(isCorrect) {
-        if (isCorrect) {
-            streak++;
-            difficulty += 0.15;
-            target.r = Math.max(12, target.r - 2);
-            document.getElementById('status-text').innerText = "DATA SYNCED. ACCELERATING...";
-        } else {
-            streak = 0;
-            difficulty = 1.0;
-            target.r = 40;
-            document.getElementById('status-text').innerText = "DATA CORRUPTED. REBOOTING...";
-        }
-        
-        statsDisplay.innerText = `STREAK: ${streak} | LVL: ${difficulty.toFixed(1)} | RADIUS: ${target.r}`;
-        quizOverlay.style.display = 'none';
-        trackingScore = 0;
-        progressFill.style.width = "0%";
-        gameActive = true;
-        update();
-    }
-
-    window.addEventListener('resize', () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    });
-
     update();
 </script>
-
 </body>
 </html>
