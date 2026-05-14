@@ -3,35 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GED Aim Trainer - Pro</title>
+    <title>GED Aim Trainer - Infinity Pool</title>
     <style>
         :root { --primary: #ff4655; --bg: #0f1923; --accent: #00ff00; }
         body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; }
         
-        /* Start Screen */
         #start-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 25, 35, 0.98); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 500; text-align: center;
+            align-items: center; justify-content: center; z-index: 500;
         }
 
-        .input-box {
-            background: #1f2326; border: 1px solid #333; padding: 20px;
-            margin: 20px; border-radius: 4px; border-top: 3px solid var(--primary);
-        }
+        .input-box { background: #1f2326; border: 1px solid #333; padding: 20px; margin: 20px; border-top: 3px solid var(--primary); }
+        input[type="number"] { background: #0f1923; border: 1px solid var(--primary); color: white; padding: 10px; font-size: 18px; width: 100px; text-align: center; }
 
-        input[type="number"] {
-            background: #0f1923; border: 1px solid var(--primary); color: white;
-            padding: 10px; font-size: 18px; width: 100px; text-align: center; outline: none;
-        }
+        .btn-main { background: var(--primary); color: white; border: none; padding: 15px 40px; font-weight: bold; cursor: pointer; letter-spacing: 2px; }
 
-        .btn-main {
-            background: var(--primary); color: white; border: none; padding: 15px 40px;
-            font-weight: bold; cursor: pointer; letter-spacing: 2px; transition: 0.2s;
-        }
-        .btn-main:hover { background: #ff5e6a; transform: scale(1.05); }
-
-        /* Crosshair */
         #crosshair {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 18px; height: 18px; pointer-events: none; z-index: 10; display: none;
@@ -40,7 +27,6 @@
         .v { width: 2px; height: 6px; left: 8px; }
         .h { width: 6px; height: 2px; top: 8px; }
 
-        /* Quiz */
         #quiz-overlay {
             display: none; position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%); background: #1f2326;
@@ -48,33 +34,30 @@
         }
         .option-btn {
             display: block; width: 100%; padding: 15px; margin: 10px 0;
-            background: #2a2e33; color: white; border: 1px solid #3d434a; 
-            cursor: pointer; text-align: left; font-size: 14px;
+            background: #2a2e33; color: white; border: 1px solid #3d434a; cursor: pointer;
         }
         .option-btn:hover { background: var(--primary); }
 
-        .hud {
-            position: absolute; top: 30px; width: 100%;
-            display: flex; flex-direction: column; align-items: center; pointer-events: none;
-        }
+        .hud { position: absolute; top: 30px; width: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
         #progress-bar { width: 300px; height: 5px; background: rgba(255,255,255,0.1); }
         #progress-fill { width: 0%; height: 100%; background: var(--accent); }
+        #q-count { font-size: 10px; color: #555; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <div id="start-screen">
-    <h1 style="color:var(--primary); letter-spacing: 8px; margin-bottom: 0;">PREPARATION PHASE</h1>
+    <h1 style="color:var(--primary); letter-spacing: 8px;">PRACTICE RANGE</h1>
     <div class="input-box">
-        <p style="margin-top: 0; font-size: 12px; color: #888;">SYNC YOUR VALORANT SENSITIVITY</p>
+        <p style="font-size: 12px; color: #888;">VALORANT SENSITIVITY</p>
         <input type="number" id="valSensInput" value="0.50" step="0.01">
     </div>
-    <button class="btn-main" onclick="resumeGame()">CLICK TO BEGIN</button>
-    <p style="font-size: 11px; color: #444; margin-top: 20px;">PRESS ESC DURING PRACTICE TO RE-ADJUST</p>
+    <button class="btn-main" onclick="resumeGame()">START TRAINING</button>
 </div>
 
 <div class="hud">
     <div id="progress-bar"><div id="progress-fill"></div></div>
+    <div id="q-count">QUESTIONS COMPLETED: 0</div>
 </div>
 
 <div id="crosshair">
@@ -84,7 +67,7 @@
 
 <div id="quiz-overlay">
     <h4 id="q-subject" style="color: var(--primary); margin: 0; letter-spacing: 2px;"></h4>
-    <h2 id="q-text" style="font-weight: normal; margin: 15px 0 25px 0; line-height: 1.4;"></h2>
+    <h2 id="q-text" style="font-weight: normal; margin: 15px 0 25px 0;"></h2>
     <div id="q-options"></div>
 </div>
 
@@ -104,17 +87,52 @@
     let gameActive = false;
     let trackingScore = 0;
     let viewX = 0, viewY = 0;
+    let questionsSolved = 0;
+    let usedQuestionIndices = new Set();
     
-    // Slow, smooth target for tracking discipline
     let target = { x: canvas.width/2, y: canvas.height/2, r: 35, dx: 1.2, dy: 0.9 };
 
-    const hardQuestions = [
-        { subject: "ALGEBRA", q: "Solve for x: 3(x - 4) = 2x + 5", options: ["x = 17", "x = 9", "x = 1", "x = 13"], answer: "x = 17" },
-        { subject: "SCIENCE", q: "Which law states that for every action, there is an equal and opposite reaction?", options: ["Newton's First Law", "Newton's Second Law", "Newton's Third Law", "Law of Conservation of Energy"], answer: "Newton's Third Law" },
-        { subject: "GOVERNMENT", q: "How many amendments does the US Constitution currently have?", options: ["10", "27", "33", "50"], answer: "27" },
-        { subject: "BIOLOGY", q: "What is the primary function of the mitochondria in a eukaryotic cell?", options: ["Protein synthesis", "Waste disposal", "ATP (energy) production", "DNA storage"], answer: "ATP (energy) production" },
-        { subject: "MATH", q: "What is the area of a circle with a radius of 5? (Use 3.14 for π)", options: ["15.7", "31.4", "78.5", "100"], answer: "78.5" }
+    // STATIC HARD QUESTIONS
+    const staticQuestions = [
+        { subject: "SCIENCE", q: "Which element has the atomic number 1?", options: ["Helium", "Hydrogen", "Lithium", "Oxygen"], answer: "Hydrogen" },
+        { subject: "HISTORY", q: "In what year did the Civil War end?", options: ["1861", "1863", "1865", "1870"], answer: "1865" },
+        { subject: "GOVERNMENT", q: "Who is the Commander in Chief of the military?", options: ["Vice President", "Secretary of Defense", "The President", "Chief of Staff"], answer: "The President" },
+        { subject: "BIOLOGY", q: "What is the process by which plants make food?", options: ["Respiration", "Mitosis", "Photosynthesis", "Diffusion"], answer: "Photosynthesis" },
+        { subject: "CIVICS", q: "What is the supreme law of the land?", options: ["The Declaration", "The Bill of Rights", "The Constitution", "The Federalist Papers"], answer: "The Constitution" }
+        // Add as many as you like here...
     ];
+
+    // DYNAMIC MATH GENERATOR (Creates thousands of variations)
+    function generateMathQuestion() {
+        const types = ['algebra', 'area', 'percentage'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        
+        if(type === 'algebra') {
+            const a = Math.floor(Math.random() * 10) + 2;
+            const b = Math.floor(Math.random() * 20) + 1;
+            const x = Math.floor(Math.random() * 15) + 2;
+            const result = a * x + b;
+            return {
+                subject: "ALGEBRA",
+                q: `Solve for x: ${a}x + ${b} = ${result}`,
+                options: shuffle([x.toString(), (x+2).toString(), (x-1).toString(), (x*2).toString()]),
+                answer: x.toString()
+            };
+        } else {
+            const r = Math.floor(Math.random() * 10) + 2;
+            const ans = (r * r * 3.14).toFixed(1);
+            return {
+                subject: "GEOMETRY",
+                q: `What is the area of a circle with radius ${r}? (π = 3.14)`,
+                options: shuffle([ans, (r*2*3.14).toFixed(1), (r*r).toString(), "100.5"]),
+                answer: ans
+            };
+        }
+    }
+
+    function shuffle(array) {
+        return array.sort(() => Math.random() - 0.5);
+    }
 
     function resumeGame() {
         startScreen.style.display = 'none';
@@ -123,95 +141,51 @@
     }
 
     document.addEventListener('pointerlockchange', () => {
-        if (document.pointerLockElement === canvas) {
-            gameActive = true;
-            crosshair.style.display = 'block';
-        } else {
-            gameActive = false;
-            crosshair.style.display = 'none';
-            if (quizOverlay.style.display !== 'block') {
-                startScreen.style.display = 'flex';
-            }
-        }
+        gameActive = (document.pointerLockElement === canvas);
+        crosshair.style.display = gameActive ? 'block' : 'none';
+        if (!gameActive && quizOverlay.style.display !== 'block') startScreen.style.display = 'flex';
     });
 
     document.addEventListener('mousemove', (e) => {
         if (!gameActive) return;
-        const inGameSens = parseFloat(document.getElementById('valSensInput').value) || 0.5;
-        const multiplier = inGameSens * 1.45; // Calibrated for 2D Translation
-        viewX -= e.movementX * multiplier;
-        viewY -= e.movementY * multiplier;
+        const sens = parseFloat(document.getElementById('valSensInput').value) || 0.5;
+        viewX -= e.movementX * (sens * 1.45);
+        viewY -= e.movementY * (sens * 1.45);
     });
-
-    function update() {
-        if (gameActive) {
-            target.x += target.dx;
-            target.y += target.dy;
-
-            if (target.x + target.r > canvas.width || target.x - target.r < 0) target.dx *= -1;
-            if (target.y + target.r > canvas.height || target.y - target.r < 0) target.dy *= -1;
-
-            let vX = (( (target.x + viewX) % canvas.width) + canvas.width) % canvas.width;
-            let vY = (( (target.y + viewY) % canvas.height) + canvas.height) % canvas.height;
-
-            const dist = Math.hypot(vX - canvas.width/2, vY - canvas.height/2);
-            if (dist < target.r) trackingScore += 0.9;
-            else if (trackingScore > 0) trackingScore -= 0.4;
-
-            progressFill.style.width = (trackingScore / 2) + "%";
-
-            if (trackingScore >= 200) {
-                document.exitPointerLock();
-                showQuiz();
-            }
-            draw(vX, vY);
-        }
-        requestAnimationFrame(update);
-    }
-
-    function draw(vX, vY) {
-        ctx.fillStyle = '#0f1923';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.strokeStyle = '#1a252e';
-        for(let i=0; i<canvas.width; i+=200) {
-            ctx.beginPath();
-            ctx.moveTo((i + viewX) % canvas.width, 0);
-            ctx.lineTo((i + viewX) % canvas.width, canvas.height);
-            ctx.stroke();
-        }
-
-        ctx.beginPath();
-        ctx.arc(vX, vY, target.r, 0, Math.PI * 2);
-        const onTarget = Math.hypot(vX - canvas.width/2, vY - canvas.height/2) < target.r;
-        ctx.strokeStyle = onTarget ? '#00ff00' : '#ff4655';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        
-        if(onTarget) {
-            ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
-            ctx.fill();
-        }
-    }
 
     function showQuiz() {
         gameActive = false;
         quizOverlay.style.display = 'block';
-        const q = hardQuestions[Math.floor(Math.random() * hardQuestions.length)];
+        
+        let q;
+        // 50% chance for a generated math problem, 50% for a static one
+        if(Math.random() > 0.5 || usedQuestionIndices.size >= staticQuestions.length) {
+            q = generateMathQuestion();
+        } else {
+            let idx;
+            do { idx = Math.floor(Math.random() * staticQuestions.length); } 
+            while (usedQuestionIndices.has(idx));
+            usedQuestionIndices.add(idx);
+            q = staticQuestions[idx];
+        }
+
         document.getElementById('q-subject').innerText = q.subject;
         document.getElementById('q-text').innerText = q.q;
         const container = document.getElementById('q-options');
         container.innerHTML = '';
+
         q.options.forEach(opt => {
             const b = document.createElement('button');
             b.className = 'option-btn';
             b.innerText = opt;
             b.onclick = () => {
                 if(opt === q.answer) {
+                    questionsSolved++;
+                    document.getElementById('q-count').innerText = `QUESTIONS COMPLETED: ${questionsSolved}`;
                     trackingScore = 0;
                     resumeGame();
                 } else {
-                    alert("Incorrect. Target score reset, try again!");
+                    alert("Wrong! Resetting progress...");
                     trackingScore = 0;
                     resumeGame();
                 }
@@ -220,6 +194,34 @@
         });
     }
 
+    function update() {
+        if (gameActive) {
+            target.x += target.dx; target.y += target.dy;
+            if (target.x + target.r > canvas.width || target.x - target.r < 0) target.dx *= -1;
+            if (target.y + target.r > canvas.height || target.y - target.r < 0) target.dy *= -1;
+            let vX = (( (target.x + viewX) % canvas.width) + canvas.width) % canvas.width;
+            let vY = (( (target.y + viewY) % canvas.height) + canvas.height) % canvas.height;
+            const dist = Math.hypot(vX - canvas.width/2, vY - canvas.height/2);
+            if (dist < target.r) trackingScore += 1.2;
+            else if (trackingScore > 0) trackingScore -= 0.5;
+            progressFill.style.width = (trackingScore / 2) + "%";
+            if (trackingScore >= 200) { document.exitPointerLock(); showQuiz(); }
+            draw(vX, vY);
+        }
+        requestAnimationFrame(update);
+    }
+
+    function draw(vX, vY) {
+        ctx.fillStyle = '#0f1923'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#1a252e';
+        for(let i=0; i<canvas.width; i+=200) {
+            ctx.beginPath(); ctx.moveTo((i + viewX) % canvas.width, 0);
+            ctx.lineTo((i + viewX) % canvas.width, canvas.height); ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(vX, vY, target.r, 0, Math.PI * 2);
+        ctx.strokeStyle = (Math.hypot(vX - canvas.width/2, vY - canvas.height/2) < target.r) ? '#00ff00' : '#ff4655';
+        ctx.lineWidth = 3; ctx.stroke();
+    }
     update();
 </script>
 </body>
